@@ -3,7 +3,7 @@ from crewai.project import agent, task, crew, CrewBase
 from crewai_tools import FileReadTool, DirectoryReadTool
 
 import os
-os.environ['OPENAI_API_KEY'] =##API KEY
+os.environ['OPENAI_API_KEY'] = ##ADD API KEY
 
 from crewai import LLM
 llm_openai_1 = LLM(model='gpt-4o-mini', temperature=0)
@@ -77,7 +77,7 @@ class Generator:
     def code_segmentation_task(self) -> Task:
         return Task(
             description="Analyze the provided source code and segment it into logical, Jest-testable units. For each segment, identify: (1) its primary function/purpose, (2) its inputs and outputs, (3) its dependencies that will need Jest mocking, and (4) potential edge cases or areas of concern. Pay special attention to authentication flows, database interactions, and API endpoints. Each segment should be isolated enough to test independently with appropriate Jest mocks and test utilities like React Testing Library where applicable.",
-            expected_output="A structured list of code segments optimized for Jest testing, each containing: (1) the segment name/identifier, (2) the location in the source code, (3) a brief functional description, (4) input parameters and expected outputs, (5) dependencies that will need Jest mocking (jest.mock() or jest.fn()), and (6) recommendations for Jest testing focus areas, including potential for snapshot tests, mock verification, and async testing approaches.",
+            expected_output="A structured list of code segments optimized for Jest testing, each containing: (1) the segment name/identifier, (2) the location in the source code, (3) a brief functional description, (4) input parameters and expected outputs, (5) dependencies that will need Jest mocking (jest.mock() or jest.fn()), and (6) recommendations for Jest testing focus areas, including potential for snapshot tests, mock verification, and async testing approaches, (7) The segmented code should include the actual code,.",
             agent=self.code_segmentation_agent()
         )
 
@@ -185,6 +185,14 @@ class Generator:
                - React Testing Library test cases for component rendering
                - Event handling tests using fireEvent or userEvent
                - UI state management tests with appropriate queries
+               
+            6. When {feedback} is received:
+               - Parse the feedback variable for specific requested changes
+               - Make those exact changes to the test code as requested
+               - Update assertions, test structure, or mocks according to feedback
+               - Document which feedback items were addressed and how they were implemented
+               - Re-evaluate test coverage after implementing feedback changes
+               - Ensure all feedback-driven changes maintain Jest best practices
             """,
             expected_output="""
             A structured set of Jest test cases for each code segment, including:
@@ -212,9 +220,17 @@ class Generator:
                - Suggestions for additional Jest tests that may be valuable
                - Jest configuration options that might be beneficial
                
+            5. Feedback Implementation Report (if feedback was provided):
+               - List of feedback items that were addressed
+               - Description of changes made to implement each feedback item
+               - Explanation of how feedback improved test quality or coverage
+               - Any feedback items that couldn't be implemented and why
+               
             All test code should use proper Jest syntax and follow Jest best practices.
+            If feedback was provided, the final code should reflect all requested changes.
             """,
             agent=self.test_case_generator_agent(),
+            output_file='testing_code.test.js',
             context=[self.code_segmentation_task(),
                 self.mock_generator_task()]
         )
