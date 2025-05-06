@@ -9,7 +9,7 @@ class Reasoning_tester(Flow[State]):
         print(response.raw)
         self.state.code = response.raw
     
-    @listen(or_(code_gen, "changes_made"))
+    @listen(or_(code_gen, "review_again"))
     def code_review(self):
         response = completion(
             model=self.model,
@@ -22,7 +22,7 @@ class Reasoning_tester(Flow[State]):
         self.state.feedback = response.choices[0].message.content
     
     @router(code_review)
-    def router(self):
+    def router_1(self):
         if self.state.feedback == 'VALID':
             return 'proceed'
         else:
@@ -57,8 +57,15 @@ class Reasoning_tester(Flow[State]):
         response = self.g1.crew().replay(task_id=task_id, inputs=feedback)
         self.state.code = response
         print(response)
-        return "changes_made"
     
-    @listen("VALID")
+    @router(replay)
+    def router_2(self):
+      self.state.max_retry+=1
+      if self.state.max_retry<3:
+        return 'review_again'
+      else:
+        return 'Done'
+    
+    @listen(or_('proceed','Done'))
     def show_code(self):
         print(self.state.code)
