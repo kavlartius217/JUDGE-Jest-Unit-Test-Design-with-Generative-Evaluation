@@ -80,6 +80,8 @@ class EnhancedGenerator:
         return Task(
             description="Analyze the provided source code and segment it into logical, Jest-testable units. For each segment, identify: (1) its primary function/purpose, (2) its inputs and outputs, (3) its dependencies that will need Jest mocking, and (4) potential edge cases or areas of concern. Pay special attention to authentication flows, database interactions, and API endpoints. Each segment should be isolated enough to test independently with appropriate Jest mocks and test utilities like React Testing Library where applicable.",
             expected_output="A structured list of code segments optimized for Jest testing, each containing: (1) the segment name/identifier, (2) the location in the source code, (3) a brief functional description, (4) input parameters and expected outputs, (5) dependencies that will need Jest mocking (jest.mock() or jest.fn()), and (6) recommendations for Jest testing focus areas, including potential for snapshot tests, mock verification, and async testing approaches, (7) The segmented code should include the actual code,.",
+            create_directory=True,
+            output_file="rmjt_tests/code.js",
             agent=self.code_segmentation_agent()
         )
 
@@ -233,7 +235,7 @@ class EnhancedGenerator:
             """,
             agent=self.test_case_generator_agent(),
             create_directory=True,
-            output_file="test/test.js",
+            output_file="rmjt_tests/code.test.js",
             context=[self.code_segmentation_task(),
                 self.mock_generator_task()]
         )
@@ -245,7 +247,7 @@ class EnhancedGenerator:
         goal="Analyze Jest test cases and source code statically to identify logical inconsistencies, mocking issues, and potential failures without execution",
         backstory="""I am a deep reasoning expert specialized in static analysis of Jest test suites. With extensive knowledge of JavaScript, Jest's mocking system, and software testing principles, I can identify logical flaws in test cases by carefully analyzing the code flow, mock implementations, and test assertions. I don't need to run tests to find issues - my strength is in systematically reasoning through each test path, identifying potential problems, and predicting test outcomes. I'm particularly skilled at detecting mock configuration issues, inconsistent assertions, and logical contradictions that would cause tests to fail during execution.""",
         llm=llm_reasoning,
-        tools=[DirectoryReadTool(""),FileReadTool()]
+        tools=[DirectoryReadTool("/content/rmjt_tests"),FileReadTool()]
     )
 
     @task
