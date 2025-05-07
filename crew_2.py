@@ -232,91 +232,96 @@ class EnhancedGenerator:
             If feedback was provided, the final code should reflect all requested changes.
             """,
             agent=self.test_case_generator_agent(),
-            output_file="/content/gcc-national-registry-dashboard-Dev_Branch/server/src/controller/__tests__/test.js",
+            create_directory=True,
+            output_file="test/test.js",
             context=[self.code_segmentation_task(),
                 self.mock_generator_task()]
         )
 
     @agent
     def static_logic_tester_agent(self) -> Agent:
-        return Agent(
-            role="Jest Static Logic Analyzer",
-            goal="Analyze Jest test cases and source code statically to identify logical inconsistencies, mocking issues, and potential failures without execution",
-            backstory="""I am a deep reasoning expert specialized in static analysis of Jest test suites. With extensive knowledge of JavaScript, Jest's mocking system, and software testing principles, I can identify logical flaws in test cases by carefully analyzing the code flow, mock implementations, and test assertions. I don't need to run tests to find issues - my strength is in systematically reasoning through each test path, identifying potential problems, and predicting test outcomes. I'm particularly skilled at detecting mock configuration issues, inconsistent assertions, and logical contradictions that would cause tests to fail during execution.""",
-            llm=llm_reasoning,  # Using the more powerful model for reasoning
-            tools=[FileReadTool()]
-        )
+     return Agent(
+        role="Jest Static Logic Analyzer",
+        goal="Analyze Jest test cases and source code statically to identify logical inconsistencies, mocking issues, and potential failures without execution",
+        backstory="""I am a deep reasoning expert specialized in static analysis of Jest test suites. With extensive knowledge of JavaScript, Jest's mocking system, and software testing principles, I can identify logical flaws in test cases by carefully analyzing the code flow, mock implementations, and test assertions. I don't need to run tests to find issues - my strength is in systematically reasoning through each test path, identifying potential problems, and predicting test outcomes. I'm particularly skilled at detecting mock configuration issues, inconsistent assertions, and logical contradictions that would cause tests to fail during execution.""",
+        llm=llm_reasoning,
+        tools=[DirectoryReadTool(""),FileReadTool()]
+    )
 
     @task
     def static_logic_analysis_task(self) -> Task:
-        return Task(
-            description="""
-            Perform a comprehensive static analysis of the generated Jest test cases and their relationship to the source code. Without executing the tests, use deep reasoning to:
-            
-            1. For each test case:
-               - Map the logical flow from test setup through execution to assertions
-               - Verify that all mocks are properly configured for the test scenario
-               - Ensure mock return values match what the test expects
-               - Check that assertions correctly validate the expected outcomes
-               - Identify any contradictions or impossible conditions
-            
-            2. For each mock implementation:
-               - Verify it correctly simulates the behavior of the real dependency
-               - Check for inconsistencies between different mock configurations
-               - Ensure all necessary methods and properties are mocked
-               - Confirm that mock return values match the types expected by the code
-            
-            3. Identify potential coverage gaps:
-               - Edge cases that aren't tested
-               - Error handling paths that aren't verified
-               - Critical code paths without corresponding tests
-            
-            4. Find logical inconsistencies such as:
-               - Tests that assert contradictory outcomes
-               - Mocks that don't align with how the real dependency would behave
-               - Test scenarios that couldn't occur in real execution
-               - Assertions that don't actually verify the intended behavior
-            
-            5. For each identified issue:
-               - Explain the logical flow that leads to the problem
-               - Trace through the execution path step by step
-               - Demonstrate why the issue would cause a test failure
-               - Propose a specific fix that resolves the logical inconsistency
-            """,
-            expected_output="""
-            A comprehensive static analysis report containing:
-            
-            1. Test Case Logic Analysis:
-               - For each test: a step-by-step trace of the logical flow
-               - Identification of logical issues in each test case
-               - Prediction of whether each test would pass or fail if executed
-            
-            2. Mock Implementation Analysis:
-               - Assessment of each mock's correctness and completeness
-               - Identification of missing or incorrectly implemented mocks
-               - Analysis of whether mocks properly simulate dependencies
-            
-            3. Coverage Assessment:
-               - List of code paths that appear to be untested
-               - Identification of edge cases not covered by existing tests
-               - Suggestions for additional test scenarios
-            
-            4. Issue Resolution:
-               - For each identified issue:
-                 * Detailed explanation of the logical problem
-                 * Step-by-step reasoning of why it would fail
-                 * Specific code fix with before/after comparison
-                 * Explanation of why the fix resolves the issue
-            
-            5. Overall Evaluation:
-               - Percentage of tests predicted to pass without modification
-               - Categorization of issues by severity and type
-               - Prioritized list of recommended fixes
-            """,
-            agent=self.static_logic_tester_agent(),
-            output_file="tests/static_tester_inferences.md",
-            context=[self.directory_structure_task(),self.code_segmentation_task(), self.mock_generator_task(), self.test_case_generator_task()]
-        )
+     return Task(
+        description="""
+        Perform a comprehensive static analysis of the generated Jest test cases and their relationship to the source code. 
+        
+        IMPORTANT: Assume that all mocks generated by the Mock Generator are correctly implemented and accurately represent the behavior of external dependencies. Your focus should be on analyzing the test cases themselves rather than questioning the mock implementations.
+        
+        Without executing the tests, use deep reasoning to:
+        
+        1. For each test case:
+           - Map the logical flow from test setup through execution to assertions
+           - Verify that test configurations properly use the provided mocks
+           - Ensure the test's expectations align with the mock return values
+           - Check that assertions correctly validate the expected outcomes
+           - Identify any contradictions or impossible conditions within the test logic
+        
+        2. For mock usage (assuming mocks themselves are correct):
+           - Verify mocks are properly applied in the test context
+           - Check for consistency in how mocks are used across different tests
+           - Ensure all necessary dependency interactions are properly handled
+           - Confirm that test logic correctly interprets mock return values
+        
+        3. Identify potential coverage gaps:
+           - Edge cases that aren't tested
+           - Error handling paths that aren't verified
+           - Critical code paths without corresponding tests
+        
+        4. Find logical inconsistencies such as:
+           - Tests that assert contradictory outcomes
+           - Test scenarios that couldn't occur in real execution
+           - Assertions that don't actually verify the intended behavior
+           - Logical flow issues where test steps contradict each other
+        
+        5. For each identified issue:
+           - Explain the logical flow that leads to the problem
+           - Trace through the execution path step by step
+           - Demonstrate why the issue would cause a test failure
+           - Propose a specific fix that resolves the logical inconsistency
+        """,
+        expected_output="""
+        A comprehensive static analysis report containing:
+        
+        1. Test Case Logic Analysis:
+           - For each test: a step-by-step trace of the logical flow
+           - Identification of logical issues in each test case
+           - Prediction of whether each test would pass or fail if executed
+        
+        2. Mock Usage Analysis:
+           - Assessment of how effectively tests utilize the provided mocks
+           - Identification of inconsistencies in mock usage across tests
+           - Analysis of whether tests properly leverage mock behaviors
+        
+        3. Coverage Assessment:
+           - List of code paths that appear to be untested
+           - Identification of edge cases not covered by existing tests
+           - Suggestions for additional test scenarios
+        
+        4. Issue Resolution:
+           - For each identified issue:
+             * Detailed explanation of the logical problem
+             * Step-by-step reasoning of why it would fail
+             * Specific code fix with before/after comparison
+             * Explanation of why the fix resolves the issue
+        
+        5. Overall Evaluation:
+           - Percentage of tests predicted to pass without modification
+           - Categorization of issues by severity and type
+           - Prioritized list of recommended fixes
+        """,
+        agent=self.static_logic_tester_agent(),
+        output_file="static_tester_inferences.md",
+        context=[self.directory_structure_task(),self.code_segmentation_task(), self.mock_generator_task(), self.test_case_generator_task()]
+    )
 
     @crew
     def crew(self) -> Crew:
