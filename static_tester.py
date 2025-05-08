@@ -1,6 +1,13 @@
 from crewai import Agent, Task, Crew, Process
 from crewai.project import agent, task, crew, CrewBase
 from crewai_tools import FileReadTool
+from pydantic import BaseModel
+
+import json
+class Result(BaseModel):
+    expected_coverage: int
+    feedback: str
+    pass_fail: str  
 
 from crewai import LLM
 llm_reasoning = LLM(model='gpt-4o-mini', temperature=0)
@@ -12,10 +19,10 @@ class StaticTester:
     def static_logic_tester_agent(self) -> Agent:
         return Agent(
             role="Jest Static Logic Analyzer",
-            goal="Analyze a single Jest test file and its source code to identify logical issues without execution.",
+            goal="Analyze a single Jest test file and its source code to identify logical issues without execution",
             backstory="""I am a deep reasoning expert specialized in static analysis of Jest test suites. With extensive knowledge of JavaScript, Jest's mocking system, and software testing principles, I can identify logical flaws in test cases by carefully analyzing the code flow, mock implementations, and test assertions without needing to run the tests.""",
             llm=llm_reasoning,
-            tools=[DirectoryReadTool('/content/rmjt_tests'),FileReadTool()]
+            tools=[FileReadTool('/content/rmjt_tests/code.js'),FileReadTool('/content/rmjt_tests/code.test.js')]
         )
 
     @task
@@ -37,19 +44,28 @@ class StaticTester:
             5. For each issue found:
                - Explain the logical problem step by step
                - Show why it would fail
-               - Propose a specific fix
+               - Provide specific code changes to fix the issue
+            
+            YOUR OUTPUT MUST BE STRUCTURED AS A PYDANTIC MODEL WITH THE FOLLOWING FIELDS:
+            - expected_coverage: An integer percentage (0-100) indicating how much of the source code functionality is covered by the tests
+            - feedback: A detailed string containing all identified issues and SPECIFIC CODE CHANGES to fix each issue
+            - pass_fail: Either "PASS" if the tests would execute successfully or "FAIL" if issues were found
+            
+            The feedback field should include actual code snippets showing both the problematic code and the corrected version.
             """,
             expected_output="""
-            A comprehensive static analysis report containing:
+            A JSON object strictly conforming to the Result pydantic model:
             
-            1. Test Case Logic Analysis with step-by-step traces
-            2. Mock Usage Assessment
-            3. Coverage Gap Identification
-            4. Issue Details with specific fixes
-            5. Overall Evaluation with pass/fail predictions
+            {
+                "expected_coverage": 75,  # Example percentage between 0-100
+                "feedback": "Issue 1: [Description of issue]\\n\\nCurrent code:\\n```javascript\\n// Problematic code\\n```\\n\\nRecommended fix:\\n```javascript\\n// Fixed code\\n```\\n\\nIssue 2: [Description]...",
+                "pass_fail": "FAIL"  # Either "PASS" or "FAIL"
+            }
+            
+            The feedback must include SPECIFIC CODE CHANGES for each issue, showing both the original problematic code and your recommended fixed code.
             """,
             agent=self.static_logic_tester_agent(),
-            output_file="static_test_analysis.md"
+            output_pydantic=Result
         )
 
     @crew
